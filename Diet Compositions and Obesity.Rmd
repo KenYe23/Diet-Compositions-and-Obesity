@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(knitr)
 library(kableExtra)
 library(dplyr)
-library(tibble)
+library(betareg)
 ```
 
 ```{r}
@@ -88,6 +88,15 @@ selected_columns <- c("Country", "Grain", "Vegetable", "Fruit", "Protein", "Othe
 obesity_data <- supply_kcal_data[, selected_columns]
 obesity_data <- na.omit(obesity_data)
 
+# Make Obesity a proportion between 0 and 1
+obesity_data$Obesity <- obesity_data$Obesity / 100
+
+# Order the data frame based on the 'Obesity' column
+obesity_data <- obesity_data[order(obesity_data$Obesity), ]
+
+# Reset row names
+rownames(obesity_data) <- NULL
+
 kable(head(obesity_data))
 ```
 
@@ -96,7 +105,11 @@ kable(head(obesity_data))
 # Methodology
 
 ```{r}
+# Fit Beta regression model
+beta_model <- betareg(Obesity ~ Grain + Vegetable + Fruit + Protein, data = obesity_data)
 
+# Summary of the model
+summary(beta_model)
 ```
 
 \newpage
