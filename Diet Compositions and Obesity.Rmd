@@ -1,12 +1,11 @@
 ---
-title: "Food Composition & Obesity"
+title: "Diet Compositions and Obesity"
 author: "Ken Ye"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-# Knit optipons
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 ```
 
@@ -19,7 +18,7 @@ library(tibble)
 ```
 
 ```{r}
-# Load dataset
+# Load data set
 supply_kcal_data <- read.csv("Data/Food_Supply_kcal_Data.csv")
 data_dic <- read.csv("Data/Supply_Food_Data_Descriptions.csv")
 ```
@@ -38,12 +37,12 @@ kable(data_dic) |>
 
 | Categories | Items                    |
 |------------|--------------------------|
-| Grains     | Cereals - Excluding Beer |
-| Vegetables | Aquatic Products, Other  |
+| Grain      | Cereals - Excluding Beer |
+| Vegetable  | Aquatic Products, Other  |
 |            | Vegetables               |
 |            | Starchy Roots            |
 |            | Vegetal Products         |
-| Fruits     | Fruits - Excluding Wine  |
+| Fruit      | Fruits - Excluding Wine  |
 | Protein    | Animal Products          |
 |            | Eggs                     |
 |            | Fish, Seafood            |
@@ -52,7 +51,7 @@ kable(data_dic) |>
 |            | Oilcrops                 |
 |            | Pulses                   |
 |            | Treenuts                 |
-| Others     | Alcoholic Beverages      |
+| Other      | Alcoholic Beverages      |
 |            | Animal fats              |
 |            | Milk - Excluding Butter  |
 |            | Miscellaneous            |
@@ -65,27 +64,27 @@ kable(data_dic) |>
 ```{r}
 # Define the mapping of categories to groups
 category_mapping <- list(
-  Grains = c("Cereals...Excluding.Beer"),
-  Vegetables = c("Aquatic.Products..Other", "Vegetables", "Starchy.Roots", "Vegetal.Products"),
-  Fruits = c("Fruits...Excluding.Wine"),
+  Grain = c("Cereals...Excluding.Beer"),
+  Vegetable = c("Aquatic.Products..Other", "Vegetables", "Starchy.Roots", "Vegetal.Products"),
+  Fruit = c("Fruits...Excluding.Wine"),
   Protein = c("Animal.Products", "Eggs", "Fish..Seafood", "Meat", "Offals", "Oilcrops", "Pulses", "Treenuts"),
-  Others = c("Alcoholic.Beverages", "Animal.fats", "Milk...Excluding.Butter", "Miscellaneous", "Spices", "Stimulants", "Sugar.Crops", "Sugar...Sweeteners", "Vegetable.Oils")
+  Other = c("Alcoholic.Beverages", "Animal.fats", "Milk...Excluding.Butter", "Miscellaneous", "Spices", "Stimulants", "Sugar.Crops", "Sugar...Sweeteners", "Vegetable.Oils")
 )
 
 # Use mutate to create new columns for each group
 supply_kcal_data <- supply_kcal_data %>%
   mutate(
-    Grains = rowSums(select(supply_kcal_data, category_mapping$Grains)),
-    Vegetables = rowSums(select(supply_kcal_data, category_mapping$Vegetables)),
-    Fruits = rowSums(select(supply_kcal_data, category_mapping$Fruits)),
+    Grain = rowSums(select(supply_kcal_data, category_mapping$Grain)),
+    Vegetable = rowSums(select(supply_kcal_data, category_mapping$Vegetable)),
+    Fruit = rowSums(select(supply_kcal_data, category_mapping$Fruit)),
     Protein = rowSums(select(supply_kcal_data, category_mapping$Protein)),
-    Others = rowSums(select(supply_kcal_data, category_mapping$Others))
+    Other = rowSums(select(supply_kcal_data, category_mapping$Other))
   )
 ```
 
 ```{r}
 # Create obesity dataframe
-selected_columns <- c("Country", "Grains", "Vegetables", "Fruits", "Protein", "Others", "Obesity")
+selected_columns <- c("Country", "Grain", "Vegetable", "Fruit", "Protein", "Other", "Obesity")
 obesity_data <- supply_kcal_data[, selected_columns]
 obesity_data <- na.omit(obesity_data)
 
