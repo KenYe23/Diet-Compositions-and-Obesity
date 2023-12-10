@@ -100,6 +100,54 @@ rownames(obesity_data) <- NULL
 kable(head(obesity_data))
 ```
 
+```{r}
+# Data for Vietnam
+vietnam_data <- obesity_data[obesity_data$Country == "Vietnam", c("Grain", "Vegetable", "Fruit", "Protein", "Other")]
+
+# Data for Kiribati
+kiribati_data <- obesity_data[obesity_data$Country == "Kiribati", c("Grain", "Vegetable", "Fruit", "Protein", "Other")]
+
+# Data for the United States of America
+usa_data <- obesity_data[obesity_data$Country == "United States of America", c("Grain", "Vegetable", "Fruit", "Protein", "Other")]
+
+# Function to create pie chart for a country with percentages
+create_pie_chart <- function(country_data, title) {
+  # Convert percentages to absolute values
+  country_data_abs <- country_data * 0.01 * sum(country_data)
+  
+  # Calculate percentages for each category
+  percentages <- round((country_data_abs / sum(country_data_abs)) * 100, 1)
+  
+  # Colors for the pie chart
+  colors <- c("#E41A1C", "#377EB8", "#4DAF4A", "#FF7F00", "#FDBF6F")
+  
+  # Create a pie chart
+  pie_data <- as.numeric(country_data_abs)
+  names(pie_data) <- colnames(country_data_abs)
+  
+  # Create the pie chart with percentages
+  pie(pie_data, labels = paste(names(pie_data), "\n", percentages, "%"), col = colors, main = title)
+}
+
+# Set up a 1x3 layout for plots
+layout(matrix(1:3, nrow = 1))
+
+# Create pie charts for each country with percentages
+create_pie_chart(vietnam_data, "Vietnam (2.1% Obesity Rate)")
+create_pie_chart(usa_data, "US (37.3% Obesity Rate)")
+create_pie_chart(kiribati_data, "Kiribati (45.6% Obesity Rate)")
+
+# Set up larger outer margins for the overall title
+par(oma = c(0, 0, 2, 0))
+
+# Add an overall title
+title("Diet Composition (kcal) by Country", outer = TRUE)
+
+# Reset the layout and margins
+layout(1)
+par(oma = c(0, 0, 0, 0))
+```
+
 \newpage
 
 # Methodology
