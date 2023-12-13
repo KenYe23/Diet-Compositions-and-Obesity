@@ -110,6 +110,8 @@ Imputing missing values with PMM contributes to the validity of our
 inferences and enhances the generalizability of my findings to a broader
 global context.
 
+## EDA
+
 \newpage
 
 # Methodology
@@ -127,7 +129,7 @@ y.test <- y[test]
 
 ## Simple Linear Regression Model
 
-```{r}
+```{r results = "hide"}
 lm <- lm(y ~ x, subset = train)
 lm.pred <- predict(lm, newx = x[test,])
 summary(lm)
@@ -137,33 +139,39 @@ summary(lm)
 
 ```{r}
 lasso.mod <- glmnet(x[train,], y[train], alpha = 1)
-plot(lasso.mod)
+par(mar = c(6, 6, 6, 6))
+plot(lasso.mod, main = "Lasso Regularization Path")
 ```
 
 ```{r}
 # CV
+set.seed(1)
 cv.out <- cv.glmnet(x[train,], y[train], alpha = 1)
-plot(cv.out)
+par(mar = c(6, 6, 6, 6))
+plot(cv.out, main = "Lasso Prediction Error")
 bestlam <- cv.out$lambda.min
-print(bestlam)
 lasso.pred <- predict(lasso.mod, s = bestlam, newx = x[test,])
+```
+
+```{r results = "hide"}
+print(bestlam)
 ```
 
 ## Model Comparison
 
-```{r}
+```{r results = "hide"}
 # Simple LM MSE
 mean((lm.pred - y.test)^2)
 ```
 
-```{r}
+```{r results = "hide"}
 # Lasso MSE
 mean((lasso.pred - y.test)^2)
 ```
 
 ## Final Model
 
-```{r}
+```{r results = "hide"}
 # Lasso
 out <- glmnet(x, y, alpha = 1)
 lasso.coef <- predict(out, type = "coefficients", s = bestlam)
@@ -173,6 +181,26 @@ lasso.coef
 \newpage
 
 # Results
+
+```{r}
+# Convert the coefficient matrix to a regular matrix
+lasso_coefs_matrix <- as.matrix(lasso.coef)
+
+# Convert the matrix to a data frame
+lasso_coefs_df <- as.data.frame(lasso_coefs_matrix)
+lasso_coefs_df <- round(lasso_coefs_df, 3)
+
+colnames(lasso_coefs_df) <- c("Coefficient")
+
+kable(lasso_coefs_df)
+```
+
+```{r}
+lasso_coefs_df <- lasso_coefs_df |>
+  filter(Coefficient != 0)
+
+kable(lasso_coefs_df)
+```
 
 \newpage
 
