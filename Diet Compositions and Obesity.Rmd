@@ -17,12 +17,16 @@ library(dplyr)
 library(betareg)
 library(ggplot2)
 library(gridExtra)
+library(car)
+library(glmnet)
 ```
 
-```{r}
+```{r include = FALSE}
 # Load data set
-supply_kg_data <- read.csv("Data/Food_Supply_Quantity_kg_Data.csv")
-data_dic <- read.csv("Data/Supply_Food_Data_Descriptions.csv")
+supply <- read.csv("Data/dietary-composition-by-country.csv")
+death <- read.csv("Data/share-of-deaths-obesity.csv")
+gdp <- read.csv("Data/gdp-per-capita-worldbank.csv")
+income.group <- read.csv("Data/world-banks-income-groups.csv")
 ```
 
 # Introduction
@@ -33,15 +37,51 @@ The USDA Center for Nutrition Policy and Promotion recommends a very
 simple daily diet intake guideline: 30% grains, 40% vegetables, 10%
 fruits, and 20% protein. [1] [2]
 
+![MyPlate Guildlines](Data/MyPlate.png)
+
 \newpage
 
 # Data
 
+## Data Cleaning
+
 ```{r}
-kable(data_dic) |>
-  column_spec(column = 1, width = "11em")|> 
-  column_spec(column = 2, width = "37em")
+# Filter out 2019 data (newest for both data sets)
+# Filter out entities without code (not countries)
+supply <- supply |>
+  filter(Code != "", Year == 2019) |>
+  select(-Code, -Year)
+
+death <- death |>
+  filter(Code != "",Year == 2019) |>
+  select(-Code, -Year)
+
+gdp <- gdp |>
+  filter(Code != "",Year == 2019) |>
+  select(-Code, -Year)
+
+income.group <- income.group |>
+  filter(Code != "",Year == 2019) |>
+  select(-Code, -Year)
+
+# Rename variables
+colnames(supply) <- c("Country", "Miscellaneous", "Alcohol", "Animal.fat", "Vegetable.oils", "Oilcrops", "Fish.and.seafood", "Sugar.crops", "Sugar.sweeteners", "Starchy.roots", "Meat.other", "Meat.sheep.and.goat", "Meat.pig", "Meat.poultry", "Meat.beef", "Eggs", "Milk", "Nuts", "Fruit", "Vegetables", "Pulses", "Cereals.other", "Barley", "Maize", "Rice", "Wheat")
+
+colnames(death) <- c("Country", "Death.obesity")
+
+colnames(gdp) <- c("Country", "GDP.per.capita")
+
+colnames(income.group) <- c("Country", "Income.group")
 ```
+
+```{r}
+# Merge data sets
+df <- merge(supply, gdp, by = "Country", all = FALSE)
+df <- merge(df, income.group, by = "Country", all = FALSE)
+df <- merge(df, death, by = "Country", all = FALSE)
+```
+
+## Food Groups Re-categorization
 
 | Categories | Items                    |
 |------------|--------------------------|
@@ -49,38 +89,42 @@ kable(data_dic) |>
 | Vegetables | Spices                   |
 |            | Starchy Roots            |
 |            | Vegetables               |
-|            | Vegetal Products         |
+|            | Pulses\*                 |
 | Fruits     | Fruits - Excluding Wine  |
 | Protein    | Aquatic Products, Other  |
 |            | Eggs                     |
 |            | Fish, Seafood            |
 |            | Meat                     |
 |            | Offals                   |
-|            | Pulses                   |
+|            | Pulses\*                 |
+|            | Treenuts                 |
 | Dairy      | Milk - Excluding Butter  |
 | Sugar      | Sugar & Sweeteners       |
 | Alcohol    | Alcoholic Beverages      |
-| Stimulants |                          |
+| Stimulants | Stimulants               |
 | Fats       | Animal fats              |
-|            | Treenuts                 |
 |            | Vegetable Oils           |
 | Others     | Animal Products          |
 |            | Miscellaneous            |
 |            | Oilcrops                 |
 |            | Sugar Crops              |
+|            | Vegetal Products         |
 
-```{r include=FALSE}
+\*Pulses: Considered both Vegetables and Protein by USDA.
+
+```{r include = FALSE}
 # Define the mapping of categories to groups
 category_mapping <- list(
   Grains = c("Cereals...Excluding.Beer"),
-  Vegetables = c("Spices", "Starchy.Roots", "Vegetables", "Vegetal.Products"),
+  Vegetables = c("Spices", "Starchy.Roots", "Vegetables", "Pulses"),
   Fruits = c("Fruits...Excluding.Wine"),
-  Protein = c("Aquatic.Products..Other","Eggs", "Fish..Seafood", "Meat", "Offals", "Pulses"),
+  Protein = c("Aquatic.Products..Other","Eggs", "Fish..Seafood", "Meat", "Offals", "Pulses", "Treenuts"),
   Dairy = c("Milk...Excluding.Butter"),
   Sugar = c("Sugar...Sweeteners"),
   Alcohol = c("Alcoholic.Beverages"),
-  Fats = c("Animal.fats", "Treenuts", "Vegetable.Oils"),
-  Others = c("Animal.Products", "Miscellaneous", "Oilcrops", "Sugar.Crops")
+  Stimulants = c("Stimulants"),
+  Fats = c("Animal.fats", "Vegetable.Oils"),
+  Others = c("Animal.Products", "Miscellaneous", "Oilcrops", "Sugar.Crops", "Vegetal.Products")
 )
 
 # Mutate the data by combining categories
@@ -94,28 +138,28 @@ supply_kg_data <- supply_kg_data |>
     Dairy = rowSums(select(supply_kg_data, category_mapping$Dairy)),
     Sugar = rowSums(select(supply_kg_data, category_mapping$Sugar)),
     Alcohol = rowSums(select(supply_kg_data, category_mapping$Alcohol)),
+    Stimulants = rowSums(select(supply_kg_data, category_mapping$Stimulants)),
     Fats = rowSums(select(supply_kg_data, category_mapping$Fats)),
     Others = rowSums(select(supply_kg_data, category_mapping$Others))) |>
-  select(c("Country", names(category_mapping), "Stimulants", "Obesity"))
-
-# Remove rows with NA values
-supply_kg_data <- na.omit(supply_kg_data)
-
-# Transform obesity from percent to proportion between 0-1 for beta regression
-supply_kg_data$Obesity <- supply_kg_data$Obesity / 100
+  select(c("Country", names(category_mapping), "Obesity"))
 
 # Display the mutated data
 kable(head(supply_kg_data)) |>
   kable_styling(font_size = 6)
 ```
 
-```{r}
-
-```
-
 \newpage
 
 # Methodology
+
+## Linear Model
+
+```{r}
+lm <- lm(Death.obesity ~ . - Country - GDP.per.capita, data = df)
+summary(lm)
+```
+
+## Beta Regression
 
 ```{r}
 # Fit Beta regression model
@@ -123,6 +167,14 @@ beta_model <- betareg(Obesity ~ Grains + Vegetables + Fruits + Protein + Dairy +
 
 # Summary of the model
 summary(beta_model)
+```
+
+```{r}
+# Calculate VIF
+vif_values <- car::vif(beta_model)
+
+# Display VIF values
+kable(vif_values, col.names = c("Variable", "VIF"))
 ```
 
 \newpage
@@ -179,13 +231,39 @@ us_pie_chart <- pie_charts(us_data, "Diet Composition (US)")
 grid.arrange(japan_pie_chart, us_pie_chart, nrow = 2)
 ```
 
-```{r}
+## Predict Obesity Rate with USDA Guidelines
 
+```{r}
+# Create a data frame with USDA guidelines
+usda_guidelines <- data.frame(
+  Grains = 30,
+  Vegetables = 40,
+  Fruits = 10,
+  Protein = 20,
+  Dairy = 0, 
+  Sugar = 0, 
+  Alcohol = 0, 
+  Stimulants = 0, 
+  Fats = 0
+)
+```
+
+```{r}
+# Make predictions based on USDA guidelines
+predicted_obesity <- predict(beta_model, newdata = usda_guidelines, type = "response")
+
+cat("Predicted Obesity Rate with USDA Guidelines:", predicted_obesity, "\n")
 ```
 
 \newpage
 
 # Conclusion
+
+![MyPlate Plan](Data/MyPlate%20Plan.jpg)
+
+## Limitations
+
+1)  supply, not consumption
 
 \newpage
 
