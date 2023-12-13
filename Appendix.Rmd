@@ -1,0 +1,151 @@
+---
+title: "Appendix"
+author: "Ken Ye"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Food Groups Re-categorization
+
+| Categories | Items                    |
+|------------|--------------------------|
+| Grains     | Cereals - Excluding Beer |
+| Vegetables | Spices                   |
+|            | Starchy Roots            |
+|            | Vegetables               |
+|            | Pulses\*                 |
+| Fruits     | Fruits - Excluding Wine  |
+| Protein    | Aquatic Products, Other  |
+|            | Eggs                     |
+|            | Fish, Seafood            |
+|            | Meat                     |
+|            | Offals                   |
+|            | Pulses\*                 |
+|            | Treenuts                 |
+| Dairy      | Milk - Excluding Butter  |
+| Sugar      | Sugar & Sweeteners       |
+| Alcohol    | Alcoholic Beverages      |
+| Stimulants | Stimulants               |
+| Fats       | Animal fats              |
+|            | Vegetable Oils           |
+| Others     | Animal Products          |
+|            | Miscellaneous            |
+|            | Oilcrops                 |
+|            | Sugar Crops              |
+|            | Vegetal Products         |
+
+\*Pulses: Considered both Vegetables and Protein by USDA.
+
+```{r}
+# Define the mapping of categories to groups
+category_mapping <- list(
+  Grains = c("Cereals...Excluding.Beer"),
+  Vegetables = c("Spices", "Starchy.Roots", "Vegetables", "Pulses"),
+  Fruits = c("Fruits...Excluding.Wine"),
+  Protein = c("Aquatic.Products..Other","Eggs", "Fish..Seafood", "Meat", "Offals", "Pulses", "Treenuts"),
+  Dairy = c("Milk...Excluding.Butter"),
+  Sugar = c("Sugar...Sweeteners"),
+  Alcohol = c("Alcoholic.Beverages"),
+  Stimulants = c("Stimulants"),
+  Fats = c("Animal.fats", "Vegetable.Oils"),
+  Others = c("Animal.Products", "Miscellaneous", "Oilcrops", "Sugar.Crops", "Vegetal.Products")
+)
+
+# Mutate the data by combining categories
+# Select the variables we are interested in
+supply_kg_data <- supply_kg_data |>
+  mutate(
+    Grains = rowSums(select(supply_kg_data, category_mapping$Grains)),
+    Vegetables = rowSums(select(supply_kg_data, category_mapping$Vegetables)),
+    Fruits = rowSums(select(supply_kg_data, category_mapping$Fruits)),
+    Protein = rowSums(select(supply_kg_data, category_mapping$Protein)),
+    Dairy = rowSums(select(supply_kg_data, category_mapping$Dairy)),
+    Sugar = rowSums(select(supply_kg_data, category_mapping$Sugar)),
+    Alcohol = rowSums(select(supply_kg_data, category_mapping$Alcohol)),
+    Stimulants = rowSums(select(supply_kg_data, category_mapping$Stimulants)),
+    Fats = rowSums(select(supply_kg_data, category_mapping$Fats)),
+    Others = rowSums(select(supply_kg_data, category_mapping$Others))) |>
+  select(c("Country", names(category_mapping), "Obesity"))
+
+# Display the mutated data
+kable(head(supply_kg_data)) |>
+  kable_styling(font_size = 6)
+```
+
+## Compare Japan and US Diet Compositions
+
+```{r}
+filtered_data <- supply_kg_data |>
+  filter(Country %in% c("Japan", "United States of America"))
+
+kable(filtered_data, row.names = FALSE) |>
+  kable_styling(font_size = 6)
+```
+
+```{r}
+# Data for Japan
+japan_data <- supply_kg_data[supply_kg_data$Country == "Japan",]
+
+# Data for the US
+us_data <- supply_kg_data[supply_kg_data$Country == "United States of America",]
+```
+
+```{r}
+# Graph pie charts
+pie_charts <- function(data, title_text) {
+  chart_data <- data.frame(
+    food_groups = names(data[2:10]),
+    food_percentage = as.numeric(data[2:10])
+  )
+  
+  ggplot(chart_data, aes(x = "", 
+                         y = food_percentage, 
+                         fill = food_groups)) +
+    geom_bar(stat = "identity", width = 1) +
+    theme_classic() +
+    theme(plot.title = element_text(hjust = 0.5),
+          axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(), 
+          legend.position = "bottom", 
+      legend.direction = "horizontal") +
+    labs(fill = "food_group",
+         x = NULL,
+         y = NULL,
+         title = title_text) + 
+    coord_polar("y")
+}
+
+japan_pie_chart <- pie_charts(japan_data, "Diet Composition (Japan)")
+us_pie_chart <- pie_charts(us_data, "Diet Composition (US)")
+
+grid.arrange(japan_pie_chart, us_pie_chart, nrow = 2)
+```
+
+## Predict Obesity Rate with USDA Guidelines
+
+```{r}
+# Create a data frame with USDA guidelines
+usda_guidelines <- data.frame(
+  Grains = 30,
+  Vegetables = 40,
+  Fruits = 10,
+  Protein = 20,
+  Dairy = 0, 
+  Sugar = 0, 
+  Alcohol = 0, 
+  Stimulants = 0, 
+  Fats = 0
+)
+```
+
+```{r}
+# Make predictions based on USDA guidelines
+predicted_obesity <- predict(beta_model, newdata = usda_guidelines, type = "response")
+
+cat("Predicted Obesity Rate with USDA Guidelines:", predicted_obesity, "\n")
+```
