@@ -14,12 +14,10 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(knitr)
 library(kableExtra)
 library(dplyr)
-library(betareg)
-library(ggplot2)
-library(gridExtra)
-library(car)
 library(glmnet)
 library(mice)
+library(ggplot2)
+library(scatterplot3d)
 ```
 
 ```{r include = FALSE}
@@ -112,6 +110,29 @@ global context.
 
 ## EDA
 
+```{r}
+ggplot(df, aes(x = Income.group, y = Death.obesity)) +
+  geom_boxplot(fill = "skyblue", color = "darkblue", alpha = 0.7) +
+  labs(title = "Death Obesity vs Income Group", x = "Income Group", y = "Death Obesity") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black"))
+```
+
+```{r}
+scatterplot3d(df$Rice, df$Pulses, df$Death.obesity, color = df$Pulses,
+              main = "3D Scatter Plot of Rice and Pulses Interaction",
+              xlab = "Rice", ylab = "Pulses", zlab = "Death Obesity",
+              angle = 55, pch = 16, color.palette = heat.colors)
+```
+
+```{r results = "hide"}
+pulses.rice <- lm(Death.obesity ~ Pulses * Rice, data = df)
+summary(pulses.rice)
+```
+
 \newpage
 
 # Methodology
@@ -182,7 +203,7 @@ lasso.coef
 
 # Results
 
-```{r}
+```{r results = "hide"}
 # Convert the coefficient matrix to a regular matrix
 lasso_coefs_matrix <- as.matrix(lasso.coef)
 
