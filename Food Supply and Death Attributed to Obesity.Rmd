@@ -1,5 +1,5 @@
 ---
-title: "Diet Compositions and Obesity"
+title: "Food Supply and Death Attributed to Obesity"
 author: "Ken Ye"
 date: "`r Sys.Date()`"
 output: pdf_document
@@ -18,6 +18,7 @@ library(glmnet)
 library(mice)
 library(ggplot2)
 library(scatterplot3d)
+library(car)
 ```
 
 ```{r include = FALSE}
@@ -34,8 +35,8 @@ With an alarming 41.9% of the U.S. population classified as obese, as
 revealed by the 2011 National Health and Nutrition Examination Survey
 (NHANES) [1], the implications of this health crisis become undeniably
 significant. However, the impact becomes even more pronounced when
-considered globally, where obesity contributed to 8% of deaths in
-2017---an alarming surge from 4.5% in 1990 [2].
+considered globally, where obesity contributed to 8% of deaths in 2017
+--- an alarming surge from 4.5% in 1990 [2].
 
 Obesity, beyond its visual manifestations, is intricately linked to
 severe health conditions, including heart disease, stroke, type 2
@@ -79,8 +80,6 @@ methodology advances to Lasso regression, a more sophisticated model
 aimed at pinpointing the most influential variables while mitigating the
 risk of overfitting.
 
-\newpage
-
 # Data
 
 ## Data Sources
@@ -95,21 +94,22 @@ Predictor variables (after renaming): `Miscellaneous`, `Alcohol`,
 `Sugar.crops`, `Sugar.sweeteners`, `Starchy.roots`, `Meat.other`,
 `Meat.sheep.and.goat`, `Meat.pig`, `Meat.poultry`, `Meat.beef`, `Eggs`,
 `Milk`, `Nuts`, `Fruit`, `Vegetables`, `Pulses`, `Cereals.other`,
-`Barley`, `Maize`, `Rice`, `Wheat` - each one (25 total) is a food group
-available for consumption, continuous, unit (kcal per day per capita)
+`Barley`, `Maize`, `Rice`, `Wheat` --- each one (25 total) is a food
+group available for consumption, continuous, unit (kcal per day per
+capita)
 
-Source: Our World in Data based on UN FAO & historical sources --
+Source: Our World in Data based on UN FAO & historical sources ---
 processed by Our World in Data
 
 Link: <https://www.fao.org/faostat/en/#data/FBS>
 
 2)  World Bank income classification
 
-Predictor variable (after renaming): `Income.group` - nominal, four
+Predictor variable (after renaming): `Income.group` --- nominal, four
 categories (Low-income countries, Lower-middle-income countries,
 Upper-middle-income countries, High-income countries)
 
-Source: World Bank (2022) -- processed by Our World in Data
+Source: World Bank (2022) --- processed by Our World in Data
 
 Link:
 <https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups>
@@ -117,10 +117,10 @@ Link:
 3)  Share of total deaths that are from all causes attributed to high
     body-mass index, in both sexes aged age-standardized
 
-Response variable (after renaming): `Death.obesity` - continuous, unit
+Response variable (after renaming): `Death.obesity` --- continuous, unit
 (%)
 
-Source: IHME, Global Burden of Disease Study (2019) -- processed by Our
+Source: IHME, Global Burden of Disease Study (2019) --- processed by Our
 World in Data
 
 Link: <https://ourworldindata.org/obesity>
@@ -163,6 +163,14 @@ df <- merge(supply, income.group, by = "Country", all = FALSE)
 df <- merge(df, death, by = "Country", all = FALSE)
 ```
 
+To ensure chronological congruence in the analysis, I selected the
+latest year (2019) for which data was available in all three datasets
+and excluded any observations for entities that are not countries (e.g.
+Africa), focusing on individual countries. Renaming variables enhanced
+legibility. Finally, I merged the three datasets using the inner join
+method on the variable `Country`. The resulting merged dataset, named
+`df`, comprises 181 observations and 28 columns.
+
 ## Missing Data Imputation
 
 ```{r include = FALSE}
@@ -193,21 +201,56 @@ global context.
 
 ## EDA
 
+### Obesity-attributed Death Visualization
+
 ![Share of Deaths Attributed to Obesity Across the
 Globe](Data/share-of-deaths-obesity.png)
+
+The distribution of obesity-attributed death varies significantly on a
+global scale, as illustrated in the above map.
+
+In numerous middle-income nations, notably in Eastern Europe, Central
+Asia, North Africa, and Latin America, over 15% of deaths were linked to
+obesity. This pattern likely arises from a high prevalence of obesity
+coupled with comparatively poorer overall health and healthcare systems,
+especially when compared to high-income countries experiencing similar
+levels of obesity.
+
+Contrastingly, in most high-income countries, this proportion ranges
+between 8% to 10%, approximately half of that observed in many
+middle-income countries. Notable exceptions among affluent nations are
+Japan and South Korea, where only around 5% of premature deaths are
+attributed to obesity.
+
+Turning to low-income countries, particularly those in Sub-Saharan
+Africa, obesity accounts for less than 5% of deaths, underscoring a
+distinct epidemiological profile in these regions.
 
 ```{r}
 df$Income.group <- factor(df$Income.group, levels = c("Low-income countries", "Lower-middle-income countries", "Upper-middle-income countries", "High-income countries"))
 
 ggplot(df, aes(x = Income.group, y = Death.obesity)) +
   geom_boxplot(fill = "skyblue", color = "darkblue", alpha = 0.7) +
-  labs(title = "Share of Deaths Attributed to Obesity", x = "Income Group", y = "Obesity-Caused Death Rate") +
+  labs(title = "Share of Deaths Attributed to Obesity", x = "Income Group", y = "Obesity-attributed Death Rate") +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         axis.line = element_line(color = "black"))
 ```
+
+The graph above, utilizing 2019 data, provides a clearer depiction of
+how the obesity-attributed death rate varies across countries' economic
+statuses. Notably, as a country progresses through income group
+classifications from Low-income to Lower-middle-income to
+Upper-middle-income, there is an observable increase in the
+obesity-attributed death rate. Intriguingly, when a country transitions
+from Upper-middle-income to High-income, the obesity-attributed death
+rate begins to decrease once more. This pattern adds an intriguing layer
+to the analysis, prompting further exploration into the nuanced
+relationship between economic status and obesity-related mortality.
+
+### Exploration of Interaction Effects
 
 ```{r}
 scatterplot3d(df$Rice, df$Pulses, df$Death.obesity, color = df$Pulses,
@@ -221,7 +264,26 @@ pulses.rice <- lm(Death.obesity ~ Pulses * Rice, data = df)
 summary(pulses.rice)
 ```
 
-\newpage
+```{r results = "hide"}
+poultry.vege <- lm(Death.obesity ~ Meat.poultry * Vegetables, data = df)
+summary(poultry.vege)
+```
+
+```{r results = "hide"}
+beef.starch <- lm(Death.obesity ~ Meat.beef * Starchy.roots, data = df)
+summary(beef.starch)
+```
+
+During meal consumption, certain food pairings emerge as common
+occurrences --- rice (`Rice`) paired with beans (`Pulses`), chicken
+(`Meat.poultry`) alongside broccoli (`Vegetables`), and steak
+(`Meat.beef)` accompanied by mashed potatoes (`Starchy.roots`), to name
+a few. Exploring potential interaction effects between the supply of
+these food groups could shed light on nuanced dietary patterns and their
+impact on obesity-attributed death. However, an examination of the
+coefficients for these interaction terms reveals a lack of statistical
+significance. Consequently, the exploration of interaction effects is
+not pursued further in the subsequent models.
 
 # Methodology
 
@@ -236,6 +298,9 @@ test <- setdiff(1:nrow(x), train)
 y.test <- y[test]
 ```
 
+The 181 observations are randomly divided into 80% training and 20%
+testing sets.
+
 ## Simple Linear Regression Model
 
 ```{r results = "hide"}
@@ -243,6 +308,62 @@ lm <- lm(y ~ x, subset = train)
 lm.pred <- predict(lm, newx = x[test,])
 summary(lm)
 ```
+
+```{r results = "hide"}
+vif_data <- data.frame(Variables = colnames(x), VIF = numeric(ncol(x)))
+
+for (i in 1:ncol(x)) {
+  lm_i <- lm(x[, i] ~ x[, -i])
+  vif_i <- 1 / (1 - summary(lm_i)$r.squared)
+  vif_data$VIF[i] <- vif_i
+}
+
+print(vif_data)
+```
+
+The simple linear regression model is employed to predict the
+obesity-attributed death rate based on the supply of 25 food groups and
+the country's income group. The model exhibited a Multiple R-squared of
+0.6466, indicating a reasonable level of explained variability.
+Significant predictors included specific food groups such as fish and
+seafood, sheep and goat, pig, poultry, beef, and wheat. Among income
+groups, lower-middle-income countries, upper-middle-income countries,
+and high-income countries also demonstrated notable effects. The
+F-statistic was significant (p-value: 2.181e-15), affirming the model's
+overall significance. In addition, while checking for multicollinearity
+issues, all variables except for upper-middle-income countries (VIF =
+5.4) and high-income countries (VIF = 8.9) had VIF values \< 5,
+indicating low or no multicollinearity issues. This initial analysis
+provides valuable insights into factors influencing obesity-related
+mortality, paving the way for further refinement and exploration through
+techniques like Lasso regression.
+
+Lasso regression provides several advantages for refining predictive
+models. One key feature is the introduction of a regularization term
+that encourages sparsity in coefficient estimates, facilitating
+automatic variable selection. This proves particularly beneficial when
+dealing with a substantial number of predictors, such as the 26
+predictors in this case, where prior knowledge about their significance
+may be limited. Lasso tends to shrink certain coefficients to zero,
+effectively excluding irrelevant variables and enhancing model
+interpretability.
+
+In addition to variable selection, Lasso addresses multicollinearity
+issues by favoring a unique subset of correlated predictors. This not
+only contributes to model stability but also ensures interpretability by
+focusing on the most relevant information. The regularization
+incorporated in Lasso goes beyond enhancing model generalization; it
+also promotes robustness, making the model more resilient to
+fluctuations in the data and, consequently, improving predictive
+accuracy.
+
+Furthermore, the importance of standardization cannot be overstated,
+especially for predictors related to food groups. Standardization
+ensures that all variables are on the same scale, crucial when dealing
+with diverse food supplies in varying absolute quantities. Since some
+food groups may have low consumption rates, standardization aids in
+providing a fair comparison between different predictors, contributing
+to the overall effectiveness of the Lasso regression model.
 
 ## Lasso Regression Model
 
@@ -266,6 +387,11 @@ lasso.pred <- predict(lasso.mod, s = bestlam, newx = x[test,])
 print(bestlam)
 ```
 
+To fit the Lasso model, a ten-fold cross-validation (CV) approach is
+employed to identify the optimal lambda value, which is determined to be
+0.23. This lambda value is subsequently utilized to construct the final
+model using the entire dataset.
+
 ## Model Comparison
 
 ```{r results = "hide"}
@@ -278,7 +404,17 @@ mean((lm.pred - y.test)^2)
 mean((lasso.pred - y.test)^2)
 ```
 
-## Final Model
+When comparing the prediction accuracy of the Lasso model with the
+simple linear regression model, a substantial improvement is evident.
+The testing Mean Squared Error (MSE) decreased significantly, dropping
+from 44.6 in the simple linear regression model to 7.8 in the Lasso
+model. This noteworthy reduction underscores the enhanced performance of
+the Lasso model, emphasizing its superior predictive capabilities in
+capturing the underlying patterns within the data.
+
+# Results
+
+## Final Model (Lasso)
 
 ```{r results = "hide"}
 # Lasso
@@ -286,10 +422,6 @@ out <- glmnet(x, y, alpha = 1)
 lasso.coef <- predict(out, type = "coefficients", s = bestlam)
 lasso.coef
 ```
-
-\newpage
-
-# Results
 
 ```{r results = "hide"}
 # Convert the coefficient matrix to a regular matrix
@@ -311,31 +443,194 @@ lasso_coefs_df <- lasso_coefs_df |>
 kable(lasso_coefs_df)
 ```
 
-\newpage
+## Model Interpretation
+
+The table above presents the variables selected by the Lasso model along
+with their corresponding coefficients. These coefficients indicate the
+strength and direction of the relationship between each predictor and
+the obesity-attributed death rate. Here is an interpretation of the
+selected variables:
+
+**Intercept**: The intercept of 5.48% represents the predicted
+obesity-attributed death rate when the supply of all food groups is
+theoretically zero, and the country is classified as part of the
+High-income group. It's essential to note that this scenario is not
+practically meaningful, as complete absence of food supply is
+unrealistic. The intercept serves as a baseline reference point for the
+model but should be interpreted with caution in the context of
+food-related variables.
+
+**Oilcrops**: The positive coefficient for Oilcrops indicates that a
+one-unit increase in the supply of oil-rich crops, measured in
+kilocalories per day per capita, is associated with an estimated 0.80%
+increase in the obesity-attributed death rate, holding other variables
+constant. This relationship suggests that a higher intake of oil-rich
+crops, such as certain seeds and nuts, may contribute to a diet with a
+higher fat content, potentially influencing obesity-related health
+issues.
+
+**Fish and Seafood**: The negative coefficient for Fish and Seafood
+suggests that a one-unit increase in the supply of fish and seafood is
+associated with an estimated 1.72% decrease in the obesity-attributed
+death rate, holding other variables constant. This aligns with the
+established health benefits of fish consumption, as fish is a rich
+source of omega-3 fatty acids, which may contribute to improved
+cardiovascular health and a potential reduction in obesity-related
+risks.
+
+**Sugar Sweeteners**: The positive coefficient for Sugar Sweeteners
+indicates that a one-unit increase in the supply of sugar sweeteners is
+associated with an estimated 0.35% increase in the obesity-attributed
+death rate, holding other variables constant. This suggests that higher
+supplies of sugar sweeteners, often found in processed foods and
+beverages, may contribute to an increased risk of obesity-related health
+issues due to excessive sugar consumption.
+
+**Meat Sheep and Goat**: The positive coefficient for Meat Sheep and
+Goat suggests that a one-unit increase in the supply of sheep and goat
+meat is associated with an estimated 0.0145% increase in the
+obesity-attributed death rate, holding other variables constant. This
+relationship may be explained by the higher saturated fat content in
+these meats, which, when consumed excessively, may contribute to adverse
+health outcomes related to obesity.
+
+**Meat Pig**: The negative coefficient for Meat Pig indicates that a
+one-unit increase in the supply of pig meat is associated with an
+estimated 0.0032% decrease in the obesity-attributed death rate, holding
+other variables constant. This may be due to a potential protective
+effect, as pig meat is often leaner compared to some other meats, and
+moderate consumption of lean protein may be associated with better
+health outcomes.
+
+**Meat Poultry**: The positive coefficient for Meat Poultry suggests
+that a one-unit increase in the supply of poultry meat is associated
+with an estimated 0.0242% increase in the obesity-attributed death rate,
+holding other variables constant. This relationship may be associated
+with the consumption of processed poultry products, such as deli meats
+and deep-fried products, which can be high in unhealthy fats and
+additives, potentially contributing to obesity-related health issues.
+
+**Meat Beef**: The negative coefficient for Meat Beef indicates that a
+one-unit increase in the supply of beef is associated with an estimated
+0.0154% decrease in the obesity-attributed death rate, holding other
+variables constant. This suggests a potential protective effect,
+possibly because lean beef can be part of a balanced diet, providing
+essential nutrients without excessive unhealthy fats.
+
+**Fruit**: The positive coefficient for Fruit indicates that a one-unit
+increase in the supply of fruits is associated with an estimated 0.0004%
+increase in the obesity-attributed death rate, holding other variables
+constant. This relationship may be explained by the fact that while
+fruits contain essential vitamins and fiber, excessive consumption of
+certain fruits high in natural sugars may contribute to caloric intake
+and, in turn, obesity-related risks.
+
+**Pulses**: The negative coefficient for Pulses suggests that a one-unit
+increase in the supply of pulses is associated with an estimated 0.0013%
+decrease in the obesity-attributed death rate, holding other variables
+constant. This potential protective effect may be attributed to the high
+fiber and plant protein content in pulses, contributing to satiety and a
+balanced diet, reducing the risk of obesity-related health issues.
+
+**Cereals Other**: The negative coefficient for Cereals Other indicates
+that a one-unit increase in the supply of other cereals is associated
+with an estimated 0.0021% decrease in the obesity-attributed death rate,
+holding other variables constant. This relationship may be associated
+with the inclusion of whole grains in this category, known for their
+health benefits, including promoting satiety and contributing to better
+weight management.
+
+**Wheat**: The positive coefficient for Wheat indicates that a one-unit
+increase in the supply of wheat is associated with an estimated 0.0063%
+increase in the obesity-attributed death rate, holding other variables
+constant. This suggests a potential increase in obesity-related health
+risks with higher wheat supply, possibly due to the consumption of
+refined wheat products lacking the nutritional benefits of whole grains.
+
+**Income Groups**:
+
+**Lower-middle-income countries**: The positive coefficient for
+Lower-middle-income countries indicates that being classified as part of
+this income group is associated with an estimated 0.0289% increase in
+the obesity-attributed death rate, holding other variables constant.
+This relationship may be influenced by various factors, including
+changes in dietary patterns, lifestyle, and healthcare infrastructure
+that contribute to obesity-related health risks.
+
+**Upper-middle-income countries**: The significant positive coefficient
+for Upper-middle-income countries suggests a more substantial impact,
+with an estimated 1.8862% increase in the obesity-attributed death rate,
+holding other variables constant. This may reflect a complex interplay
+of dietary, lifestyle, and socioeconomic factors in upper-middle-income
+countries contributing to heightened obesity-related health risks.
+
+## Implications
+
+The findings from this analysis hold substantial implications for
+policymakers and consumers, providing actionable insights to combat the
+escalating issue of obesity-related deaths. For policymakers, the
+identified significant predictors offer a roadmap for targeted
+intervention strategies. The positive coefficient for
+Lower-middle-income countries, for instance, signals a need for tailored
+public health initiatives in these economic contexts. Policymakers can
+leverage this information to design impactful public health campaigns,
+promoting the consumption of healthier food choices, such as Fish and
+Seafood, to mitigate the adverse effects of obesity. The insights into
+the economic considerations, as highlighted by the Income Group
+coefficients, allow policymakers to allocate resources efficiently,
+considering economic disparities in addressing obesity-related health
+risks. Additionally, consumers can benefit from this analysis by making
+informed dietary choices. Understanding the impact of specific food
+groups, such as Sugar Sweeteners, encourages moderation in the
+consumption of processed foods, while the negative coefficient for Fish
+and Seafood suggests substituting red meat with fish for potential
+health benefits. Moreover, the nuanced effects of different meat types
+provide consumers with insights for achieving a balanced diet. By
+incorporating whole grains and fiber-rich foods, consumers can
+contribute to better weight management. The awareness of economic
+disparities influencing obesity-related death rates prompts consumers to
+consider the broader socioeconomic context and advocate for systemic
+changes. In summary, these findings empower both policymakers and
+consumers with evidence-based information to address obesity-related
+deaths comprehensively.
 
 # Conclusion
 
-The USDA Center for Nutrition Policy and Promotion recommends a very
-simple daily diet intake guideline: 30% grains, 40% vegetables, 10%
-fruits, and 20% protein. [1] [2]
+This project explored the global impact of obesity-related deaths,
+focusing on the interplay of food supply, economic status, and mortality
+rates. Key findings highlighted the severity of obesity-related health
+crises and the economic burden. The analysis identified significant
+factors using a dual-stage methodology, revealing nuanced associations.
 
-![MyPlate Guildlines](Data/MyPlate.png)
+Economic status, represented by income groups, showed distinct links.
+Lower-middle-income countries were associated with increased death
+rates, emphasizing the need for targeted interventions.
+Upper-middle-income countries exhibited a significant rise in mortality
+rates, warranting further investigation.
 
-![MyPlate Plan](Data/MyPlate%20Plan.jpg)
+Food groups played a crucial role, with positive associations found for
+oil-rich crops and sugar sweeteners, indicating potential health risks.
+Negative associations with fish and seafood suggested protective
+effects, guiding healthier dietary choices.
+
+The Lasso regression model refined variable selection, emphasizing the
+impact of specific food groups and economic factors. These insights hold
+practical implications for policymakers in crafting targeted
+interventions and resource allocation. For consumers, the findings
+empower informed dietary choices to manage weight and enhance overall
+health.
+
+In conclusion, this project contributes evidence-based insights to
+address the complex challenge of obesity-related deaths globally,
+providing a foundation for comprehensive strategies.
 
 ## Limitations
 
 1)  supply, not consumption. assuming consumption is proportional to
     supply.
 
-\newpage
-
 # Citations
 
 [1] <https://www.cdc.gov/obesity/>
 
 [2] <https://ourworldindata.org/obesity>
-
-<https://www.dietaryguidelines.gov/>
-
-<https://www.myplate.gov/>
