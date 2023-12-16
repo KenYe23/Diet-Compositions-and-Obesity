@@ -30,19 +30,102 @@ income.group <- read.csv("Data/world-banks-income-groups.csv")
 
 # Introduction
 
-A staggering number of 37.3% of the US population is obese,
+With an alarming 41.9% of the U.S. population classified as obese, as
+revealed by the 2011 National Health and Nutrition Examination Survey
+(NHANES) [1], the implications of this health crisis become undeniably
+significant. However, the impact becomes even more pronounced when
+considered globally, where obesity contributed to 8% of deaths in
+2017---an alarming surge from 4.5% in 1990 [2].
 
-The USDA Center for Nutrition Policy and Promotion recommends a very
-simple daily diet intake guideline: 30% grains, 40% vegetables, 10%
-fruits, and 20% protein. [1] [2]
+Obesity, beyond its visual manifestations, is intricately linked to
+severe health conditions, including heart disease, stroke, type 2
+diabetes, and various cancers. These conditions stand as leading causes
+of preventable, premature deaths. The economic burden is equally
+staggering, with the estimated annual medical cost of obesity in the
+United States reaching nearly \$173 billion in 2019 dollars. Notably,
+medical costs for adults grappling with obesity were \$1,861 higher than
+those for individuals maintaining a healthy weight [1].
 
-![MyPlate Guildlines](Data/MyPlate.png)
+As we delve into the complex web of factors contributing to obesity, the
+role of food emerges as a central player. Continuous overconsumption, a
+potential precursor to weight gain and obesity, emphasizes the critical
+importance of understanding food composition. Certain foods, due to
+their nutrient content, can significantly influence overall health
+outcomes.
+
+However, the narrative extends beyond food alone. Economic status
+emerges as a pivotal consideration, acting as a covariate in my
+analysis. Death rates attributed to obesity exhibit variations among
+countries, and a fundamental differentiator lies in their economic
+standing. Developed countries, buoyed by high incomes, may boast
+advanced medical systems capable of mitigating obesity-related deaths.
+Paradoxically, these countries may also grapple with higher obesity
+prevalence. On the contrary, developing nations, constrained by lower
+incomes, may face a different set of challenges, potentially emphasizing
+malnutrition over obesity.
+
+In this analysis, the focal point is discerning the effects of a
+country's food supply and economic status on death rates attributed to
+obesity. The implications of this study are far-reaching, offering
+valuable insights for policymakers eager to curb obesity-related deaths
+and aiding consumers in crafting diets resilient to the detrimental
+effects of obesity.
+
+A dual-stage methodology will be employed. Initially, simple linear
+regression sheds light on the potential impact of individual food groups
+and a country's economic status. This analysis guides us towards
+identifying statistically significant associations. Subsequently, the
+methodology advances to Lasso regression, a more sophisticated model
+aimed at pinpointing the most influential variables while mitigating the
+risk of overfitting.
 
 \newpage
 
 # Data
 
-## Data Cleaning
+## Data Sources
+
+Three separate datasets, totaling 26 predictor variables and 1 response
+variable, are used in this analysis:
+
+1)  Daily caloric supply (OWID based on UN FAO & historical sources)
+
+Predictor variables (after renaming): `Miscellaneous`, `Alcohol`,
+`Animal.fat`, `Vegetable.oils`, `Oilcrops`, `Fish.and.seafood`,
+`Sugar.crops`, `Sugar.sweeteners`, `Starchy.roots`, `Meat.other`,
+`Meat.sheep.and.goat`, `Meat.pig`, `Meat.poultry`, `Meat.beef`, `Eggs`,
+`Milk`, `Nuts`, `Fruit`, `Vegetables`, `Pulses`, `Cereals.other`,
+`Barley`, `Maize`, `Rice`, `Wheat` - each one (25 total) is a food group
+available for consumption, continuous, unit (kcal per day per capita)
+
+Source: Our World in Data based on UN FAO & historical sources --
+processed by Our World in Data
+
+Link: <https://www.fao.org/faostat/en/#data/FBS>
+
+2)  World Bank income classification
+
+Predictor variable (after renaming): `Income.group` - nominal, four
+categories (Low-income countries, Lower-middle-income countries,
+Upper-middle-income countries, High-income countries)
+
+Source: World Bank (2022) -- processed by Our World in Data
+
+Link:
+<https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups>
+
+3)  Share of total deaths that are from all causes attributed to high
+    body-mass index, in both sexes aged age-standardized
+
+Response variable (after renaming): `Death.obesity` - continuous, unit
+(%)
+
+Source: IHME, Global Burden of Disease Study (2019) -- processed by Our
+World in Data
+
+Link: <https://ourworldindata.org/obesity>
+
+## Data Cleaning & Merging
 
 ```{r}
 # Filter out 2019 data (newest for both data sets)
@@ -110,10 +193,15 @@ global context.
 
 ## EDA
 
+![Share of Deaths Attributed to Obesity Across the
+Globe](Data/share-of-deaths-obesity.png)
+
 ```{r}
+df$Income.group <- factor(df$Income.group, levels = c("Low-income countries", "Lower-middle-income countries", "Upper-middle-income countries", "High-income countries"))
+
 ggplot(df, aes(x = Income.group, y = Death.obesity)) +
   geom_boxplot(fill = "skyblue", color = "darkblue", alpha = 0.7) +
-  labs(title = "Death Obesity vs Income Group", x = "Income Group", y = "Death Obesity") +
+  labs(title = "Share of Deaths Attributed to Obesity", x = "Income Group", y = "Obesity-Caused Death Rate") +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
         panel.grid.major = element_blank(),
@@ -209,7 +297,7 @@ lasso_coefs_matrix <- as.matrix(lasso.coef)
 
 # Convert the matrix to a data frame
 lasso_coefs_df <- as.data.frame(lasso_coefs_matrix)
-lasso_coefs_df <- round(lasso_coefs_df, 3)
+lasso_coefs_df <- round(lasso_coefs_df, 4)
 
 colnames(lasso_coefs_df) <- c("Coefficient")
 
@@ -227,6 +315,12 @@ kable(lasso_coefs_df)
 
 # Conclusion
 
+The USDA Center for Nutrition Policy and Promotion recommends a very
+simple daily diet intake guideline: 30% grains, 40% vegetables, 10%
+fruits, and 20% protein. [1] [2]
+
+![MyPlate Guildlines](Data/MyPlate.png)
+
 ![MyPlate Plan](Data/MyPlate%20Plan.jpg)
 
 ## Limitations
@@ -238,6 +332,10 @@ kable(lasso_coefs_df)
 
 # Citations
 
-[1] <https://www.dietaryguidelines.gov/>
+[1] <https://www.cdc.gov/obesity/>
 
-[2] <https://www.myplate.gov/>
+[2] <https://ourworldindata.org/obesity>
+
+<https://www.dietaryguidelines.gov/>
+
+<https://www.myplate.gov/>
