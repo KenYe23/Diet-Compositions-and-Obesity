@@ -155,6 +155,11 @@ df <- merge(supply, income.group, by = "Country", all = FALSE)
 df <- merge(df, death, by = "Country", all = FALSE)
 ```
 
+```{r results = "hide"}
+lm <- lm(Death.obesity ~ .-Country, data = df)
+summary(lm)
+```
+
 To ensure chronological congruence in the analysis, I selected the latest year
 (2019) for which data was available in all three datasets and excluded any
 observations for entities that are not countries (e.g. Africa), focusing on
@@ -172,12 +177,12 @@ mice_imputation <- mice(df, method = "pmm")
 df <- complete(mice_imputation)
 ```
 
-In my analysis, I encountered missing values in certain food groups across
-countries. Removing these entries would significantly reduce the dataset
-entries, leaving only 100 out of 174 countries with 45 degrees of freedom for
-model fitting (if all columns are utilized for the model). This approach would
-not be ideal for accurately representing global patterns or obtaining robust
-model estimates.
+During the examination of the data, I encountered missing values in certain food
+groups across countries. Removing these entries would significantly reduce the
+dataset, leaving only 79 out of 181 countries (with 102 observations deleted due
+to missingness) with 50 degrees of freedom left for model fitting if all columns
+are utilized. This approach would not be ideal for accurately representing
+global patterns or obtaining robust model estimates.
 
 To address this challenge, I opted for imputation using the "predictive mean
 matching"(PMM) method from the `mice` package. PMM ensures that imputed values
@@ -316,11 +321,13 @@ Among income groups, lower-middle-income countries, upper-middle-income
 countries, and high-income countries also demonstrated notable effects. The
 F-statistic was significant (p-value: 2.181e-15), affirming the model's overall
 significance. In addition, while checking for multicollinearity issues, all
-variables except for upper-middle-income countries (VIF = 5.4) and high-income
-countries (VIF = 8.9) had VIF values \< 5, indicating low or no
+variables except for `Upper-middle-income countries` (VIF = 5.4) and
+`High-income countries` (VIF = 8.9) had VIF values \< 5, indicating low or no
 multicollinearity issues. This initial analysis provides valuable insights into
 factors influencing obesity-related mortality, paving the way for further
 refinement and exploration through techniques like Lasso regression.
+
+## Lasso Regression Model
 
 Lasso regression provides several advantages for refining predictive models. One
 key feature is the introduction of a regularization term that encourages
@@ -346,8 +353,6 @@ in varying absolute quantities. Since some food groups may have low consumption
 rates, standardization aids in providing a fair comparison between different
 predictors, contributing to the overall effectiveness of the Lasso regression
 model.
-
-## Lasso Regression Model
 
 ```{r}
 lasso.mod <- glmnet(x[train,], y[train], alpha = 1)
@@ -543,7 +548,7 @@ The findings from this analysis hold substantial implications for policymakers
 and consumers, providing actionable insights to combat the escalating issue of
 obesity-related deaths. For policymakers, the identified significant predictors
 offer a roadmap for targeted intervention strategies. The positive coefficient
-for Lower-middle-income countries, for instance, signals a need for tailored
+for `Lower-middle-income countries`, for instance, signals a need for tailored
 public health initiatives in these economic contexts. Policymakers can leverage
 this information to design impactful public health campaigns, promoting the
 consumption of healthier food choices, such as Fish and Seafood, to mitigate the
@@ -593,12 +598,23 @@ In conclusion, this project contributes evidence-based insights to address the
 complex challenge of obesity-related deaths globally, providing a foundation for
 comprehensive strategies.
 
-## Limitations
+## Limitations and Future Research
 
-1)  supply, not consumption. assuming consumption is proportional to supply.
+This analysis has certain limitations that should be acknowledged. Firstly, the
+use of food supply data may not precisely reflect consumption, especially in
+higher-income countries where food waste is prevalent. Access to an actual food
+consumption dataset would provide a more accurate basis for interpreting health
+outcomes, including obesity-related deaths.
+
+Additionally, the study focused on food supply and income status as primary
+factors influencing a country's obesity-related death rate. However, the
+multifaceted nature of this outcome involves various factors such as physical
+activity and healthcare systems. Future research should expand the scope by
+incorporating additional variables to provide a more comprehensive understanding
+of the complex determinants of obesity-related deaths.
 
 # Citations
 
-[1] <https://www.cdc.gov/obesity/>
+[1] [https://www.cdc.gov/obesity](https://www.cdc.gov/obesity/){.uri}
 
 [2] <https://ourworldindata.org/obesity>
