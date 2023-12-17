@@ -32,7 +32,7 @@ income.group <- read.csv("Data/world-banks-income-groups.csv")
 # Introduction
 
 With an alarming 41.9% of the U.S. population classified as obese, as revealed
-by the 2011 National Health and Nutrition Examination Survey (NHANES) [1], the
+by the 2021 National Health and Nutrition Examination Survey (NHANES) [1], the
 implications of this health crisis become undeniably significant. However, the
 impact becomes even more pronounced when considered globally, where obesity
 contributed to 8% of deaths in 2017 --- an alarming surge from 4.5% in 1990 [2].
